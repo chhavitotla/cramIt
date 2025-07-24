@@ -1,0 +1,15 @@
+/* Importing from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Comic+Neue&family=Bungee&display=swap');
+
+/* Fallback for Satoshi (CDN alternative) */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('https://cdn.jsdelivr.net/gh/weiweihuanghuang/Work-Sans-Variable/fonts/woff2/WorkSans-VariableFont_wght.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+/* Optional fallback if Satoshi fails */
+body {
+  font-family: 'Satoshi', 'Work Sans', sans-serif;
+}

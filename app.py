@@ -1,0 +1,181 @@
+import streamlit as st
+from modules.pdf_parser import extract_text_from_pdf
+from modules.chunking import chunk_text
+from modules.notes_generator import generate_notes_from_chunks
+from modules.flashcard_generator import generate_flashcards_from_chunks
+from modules.question_generator import generate_questions_from_chunks
+
+# Inject theme.css only
+with open("styles/theme.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+    html, body {
+        font-family: 'American Typewriter', serif !important;
+        color: #1E1E1E;
+    }
+
+    h1, h2, h3 {
+        font-family: 'American Typewriter', serif !important;
+        letter-spacing: 0.5px;
+    }
+
+    .accent {
+        font-family: 'American Typewriter', serif !important;
+        color: #FF5DA2;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Page settings
+st.set_page_config(page_title="CramIt 📚", layout="wide")
+
+# Session setup
+if "chunks" not in st.session_state:
+    st.session_state.chunks = []
+if "notes" not in st.session_state:
+    st.session_state.notes = []
+if "flashcards" not in st.session_state:
+    st.session_state.flashcards = []
+if "questions" not in st.session_state:
+    st.session_state.questions = []
+if "saved_flashcards" not in st.session_state:
+    st.session_state.saved_flashcards = []
+if "pdf_uploaded" not in st.session_state:
+    st.session_state.pdf_uploaded = False
+
+# Sidebar navigation
+st.sidebar.title("🧭 Navigate")
+page = st.sidebar.radio(
+    "Choose a tool",
+    ["🏠 Home", "📚 Notes", "🃏 Flashcards", "❓ Practice Questions", "💬 Ask Your PDF"],
+    index=0
+)
+
+# -------------------- HOME --------------------
+if page == "🏠 Home":
+    st.markdown("<h1 style='text-align: center;'>📚 CramIt</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Study like you meant to all along.</h3>", unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <div style='text-align: center;'>
+            <h4>Forgot to study again?</h4>
+            <p>Of course you did. Welcome back, legend.<br>No lectures. No judgment. Just vibes (and violence).</p>
+            <p>📝 Drop the PDF<br>🔍 We'll turn it into notes, flashcards & “pls just help me” questions<br>🧠 Ask stuff like you paid attention all semester<br>🔥 Cram now, cry later</p>
+            <p><em>This isn’t studying.<br>It’s survival.</em></p>
+            <p>You bring the chaos.<br><strong>We’ll make it look like a plan.</strong></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 📎 File upload section
+    uploaded_file = st.file_uploader("Drop your PDF here", type=["pdf"], label_visibility="collapsed")
+
+    # 🧠 Submit button
+    if uploaded_file is not None:
+        if st.button("Let's Cram 🧃"):
+            # Store file and process
+            st.session_state["uploaded_file"] = uploaded_file
+
+            with st.spinner("Reading and chunking your chaotic masterpiece..."):
+                text = extract_text_from_pdf(uploaded_file)
+                chunks = chunk_text(text)
+
+            st.session_state.chunks = chunks
+            st.session_state.pdf_uploaded = True
+
+            st.success("✅ PDF uploaded and processed! Now go hit Notes, Flashcards, or Questions.")
+
+# -------------------- NOTES --------------------
+elif page == "📚 Notes":
+    st.title("📝 Notes Generator")
+    if not st.session_state.pdf_uploaded:
+        st.warning("📄 Please upload a PDF first from the Home page.")
+    else:
+        if st.button("🧠 Generate Notes"):
+            with st.spinner("Generating notes..."):
+                notes = generate_notes_from_chunks(st.session_state.chunks)
+            st.session_state.notes = notes
+            st.success("✅ Notes generated!")
+
+        if st.session_state.notes:
+            st.subheader("📚 AI-Generated Study Notes")
+            for i, note in enumerate(st.session_state.notes[:5]):
+                with st.expander(f"🧠 Notes for Chunk {i+1}"):
+                    st.markdown(note)
+
+# -------------------- FLASHCARDS --------------------
+elif page == "🃏 Flashcards":
+    st.title("🃏 Flashcard Generator")
+    
+    if not st.session_state.pdf_uploaded:
+        st.warning("📄 Please upload a PDF first from the Home page.")
+    else:
+        # Generate flashcards button
+        if st.button("🎴 Generate Flashcards"):
+            with st.spinner("Writing flashcards..."):
+                flashcards = generate_flashcards_from_chunks(st.session_state.chunks)
+                st.session_state.flashcards = flashcards
+            st.success("✅ Flashcards ready!")
+
+        # Display flashcards
+        if st.session_state.flashcards:
+            st.subheader("📚 Your Flashcards")
+            
+            for i, card in enumerate(st.session_state.flashcards):
+                question = card["question"]
+                answer = card["answer"]
+
+                st.markdown(
+                    f"""
+                    <div class="flashcard">
+                        <p><strong>Q{i+1}: {question}</strong></p>
+                        <p>💡 {answer}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            # Save button
+            if st.button("💾 Save to My Memory"):
+                st.session_state.saved_flashcards.extend(st.session_state.flashcards)
+                st.success("✅ Flashcards saved to your memory!")
+
+# -------------------- QUESTIONS --------------------
+elif page == "❓ Practice Questions":
+    st.title("❓ Practice Questions")
+    if not st.session_state.pdf_uploaded:
+        st.warning("📄 Please upload a PDF first from the Home page.")
+    else:
+        if st.button("🧪 Generate Questions"):
+            with st.spinner("Thinking up some brain-busters..."):
+                questions = generate_questions_from_chunks(st.session_state.chunks)
+            st.session_state.questions = questions
+            st.success("✅ Questions generated!")
+
+        if st.session_state.questions:
+            st.subheader("🧠 Practice Questions")
+            for i, q in enumerate(st.session_state.questions):
+                st.markdown(f"**Q{i+1}:** {q}")
+
+# -------------------- ASK YOUR PDF --------------------
+elif page == "💬 Ask Your PDF":
+    st.title("💬 Ask Your PDF")
+    if not st.session_state.pdf_uploaded:
+        st.warning("📄 Please upload a PDF first from the Home page.")
+    else:
+        from modules.qa_engine import build_qa_engine
+
+        # Build RAG engine once
+        if "qa_chain" not in st.session_state:
+            st.session_state.qa_chain = build_qa_engine(st.session_state.chunks)
+
+        user_question = st.text_input("Ask something from your PDF:")
+        if user_question:
+            with st.spinner("Thinking real hard..."):
+                result = st.session_state.qa_chain(user_question)
+                answer = result["result"]
+                st.markdown(f"**📌 Answer:** {answer}")

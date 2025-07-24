@@ -1,0 +1,36 @@
+/* Global override */
+* {
+    font-family: "American Typewriter", serif !important;
+  }
+  
+  /* Streamlit-specific overrides */
+  html, body, .css-18e3th9, .css-1d391kg, .css-1v0mbdj {
+    font-family: "American Typewriter", serif !important;
+    color: #1E1E1E;
+  }
+  
+  /* Sidebar content */
+  section[data-testid="stSidebar"] * {
+    font-family: "American Typewriter", serif !important;
+  }
+  
+  /* Markdown headings */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "American Typewriter", serif !important;
+  }
+
+  .flashcard {
+    background-color: #FFB4A2; /* Pastel Coral */
+    padding: 1rem;
+    border-radius: 20px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+    color: #1E1E1E; /* Charcoal Matte */
+    font-family: "American Typewriter", serif !important;
+    transition: transform 0.2s ease;
+  }
+  
+  .flashcard:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  }  
