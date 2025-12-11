@@ -1,7 +1,8 @@
 from langchain.vectorstores import FAISS  # Vector store for retrieval
 from langchain.embeddings import OllamaEmbeddings  # To embed text chunks
 from langchain.chains import RetrievalQA  # Chain combining retrieval + LLM
-from langchain.llms import Ollama  # Local LLM
+from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from langchain.docstore.document import Document  # Wrap chunks as documents
 from langchain.prompts import PromptTemplate  # Custom prompt for the LLM
 

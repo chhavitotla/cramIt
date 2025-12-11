@@ -1,4 +1,5 @@
-from langchain.llms import Ollama
+from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
