@@ -1,12 +1,16 @@
 import streamlit as st
 import requests
-from modules.pdf_parser import extract_text_from_pdf
-from modules.chunking import chunk_text
+
+from modules.pdf_parser import PDFParser
+from modules.chunking import TextChunker
+
 from modules.notes_generator import generate_notes_from_chunks
 from modules.flashcard_generator import generate_flashcards_from_chunks
 from modules.question_generator import generate_questions_from_chunks
 
-# Page settings - MUST be at the very top
+from modules.qa_engine import QAEngine
+
+
 st.set_page_config(page_title="CramIt 📚", layout="wide")
 
 # Backend URL
@@ -186,17 +190,34 @@ else:
         # 🧠 Submit button
         if uploaded_file is not None:
             if st.button("Let's Cram 🧃"):
-                # Store file and process
+                # Store file
                 st.session_state["uploaded_file"] = uploaded_file
 
-                with st.spinner("Reading and chunking your chaotic masterpiece..."):
-                    text = extract_text_from_pdf(uploaded_file)
-                    chunks = chunk_text(text)
+        # Initialize parser & chunker once
+        if "pdf_parser" not in st.session_state:
+            st.session_state.pdf_parser = PDFParser()
 
-                st.session_state.chunks = chunks
-                st.session_state.pdf_uploaded = True
+        if "text_chunker" not in st.session_state:
+            st.session_state.text_chunker = TextChunker()
 
-                st.success("✅ PDF uploaded and processed! Now go hit Notes, Flashcards, or Questions.")
+        with st.spinner("Reading and chunking your chaotic masterpiece..."):
+            # Read PDF bytes
+            pdf_bytes = uploaded_file.read()
+
+            # Parse PDF → pages
+            pages = st.session_state.pdf_parser.parse(
+                pdf_bytes=pdf_bytes,
+                source_name=uploaded_file.name
+            )
+
+            # Chunk pages
+            chunks = st.session_state.text_chunker.chunk(pages)
+
+        # Store results
+        st.session_state.chunks = chunks
+        st.session_state.pdf_uploaded = True
+
+        st.success("✅ PDF uploaded and processed! Now go hit Notes, Flashcards, or Questions.")
 
     # -------------------- NOTES --------------------
     elif page == "📚 Notes":
@@ -273,18 +294,38 @@ else:
     # -------------------- ASK YOUR PDF --------------------
     elif page == "💬 Ask Your PDF":
         st.title("💬 Ask Your PDF")
-        if not st.session_state.pdf_uploaded:
-            st.warning("🗂️ Please upload a PDF first from the Home page.")
-        else:
-            from modules.qa_engine import build_qa_engine
 
-            # Build RAG engine once
-            if "qa_chain" not in st.session_state:
-                st.session_state.qa_chain = build_qa_engine(st.session_state.chunks)
+    if not st.session_state.pdf_uploaded:
+        st.warning("🗂️ Please upload a PDF first from the Home page.")
+    else:
+        # Initialize QAEngine once
+        if "qa_engine" not in st.session_state:
+            st.session_state.qa_engine = QAEngine()
 
-            user_question = st.text_input("Ask something from your PDF:")
-            if user_question:
-                with st.spinner("Thinking real hard..."):
-                    result = st.session_state.qa_chain(user_question)
-                    answer = result["result"]
-                    st.markdown(f"**📌 Answer:** {answer}")
+        user_question = st.text_input("Ask something from your PDF:")
+
+        if user_question:
+            with st.spinner("Thinking real hard..."):
+                result = st.session_state.qa_engine.ask(user_question)
+
+            # Answer
+            st.markdown(f"### 📌 Answer")
+            st.write(result.get("answer", "No answer generated."))
+
+            # RAG Confidence (🔥 WOW factor)
+            rag_conf = result.get("rag_confidence", 0.0)
+            status = result.get("status", "unknown")
+
+            if status == "pass":
+                st.success(f"🧠 RAG Confidence: **{rag_conf}** — Well grounded")
+            elif status == "weak":
+                st.warning(f"⚠️ RAG Confidence: **{rag_conf}** — Partial grounding")
+            else:
+                st.error("❌ Answer not grounded in document")
+
+            # Sources
+            sources = result.get("sources", [])
+            if sources:
+                with st.expander("📚 View Source Evidence"):
+                    for i, src in enumerate(sources, 1):
+                        st.markdown(f"**Source {i}:** {src}")

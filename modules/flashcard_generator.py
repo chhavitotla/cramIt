@@ -1,36 +1,47 @@
-from langchain.llms import Ollama
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import PromptTemplate
+import os
 
-llm = Ollama(model="llama3")
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    temperature=0.3,
+    google_api_key=os.getenv("GEMINI_API_KEY")
+)
 
 FLASHCARD_PROMPT = """
-You are a flashcard bot. Read the text below and extract **one** flashcard with the format:
+You are a flashcard bot.
 
-Q: [Question here]
-A: [Answer here]
+Create flashcard from the text below.
 
-Do not write anything else.
+FORMAT:
+Q: question
+A: answer
 
-Text:
+TEXT:
 {chunk}
 """
 
-prompt = PromptTemplate(input_variables=["chunk"], template=FLASHCARD_PROMPT)
-flashcard_chain = LLMChain(llm=llm, prompt=prompt)
+prompt = PromptTemplate.from_template(FLASHCARD_PROMPT)
+flashcard_chain = prompt | llm
 
 def generate_flashcards_from_chunks(chunks):
     flashcards = []
+
     for chunk in chunks:
-        response = flashcard_chain.run(chunk=chunk)
-        lines = response.strip().split("\n")
-        question = ""
-        answer = ""
-        for line in lines:
-            if line.strip().lower().startswith("q:"):
-                question = line.replace("Q:", "").strip()
-            elif line.strip().lower().startswith("a:"):
-                answer = line.replace("A:", "").strip()
+        response = flashcard_chain.invoke({"chunk": chunk})
+        text = response.content.strip().split("\n")
+
+        question, answer = "", ""
+        for line in text:
+            if line.lower().startswith("q:"):
+                question = line[2:].strip()
+            elif line.lower().startswith("a:"):
+                answer = line[2:].strip()
+
         if question and answer:
-            flashcards.append({"question": question, "answer": answer})
+            flashcards.append({
+                "question": question,
+                "answer": answer
+            })
+
     return flashcards

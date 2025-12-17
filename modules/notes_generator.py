@@ -1,12 +1,19 @@
-from langchain_community.llms import Ollama
-from langchain_ollama import OllamaLLM
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import PromptTemplate
+import os
 
-# Set up the Ollama LLM
-llm = Ollama(model="llama3")  # Make sure 'ollama run llama3' is active
+# ---------------------------
+# Gemini LLM
+# ---------------------------
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    temperature=0.3,
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+)
 
-# Prompt template for explanatory bullet-point notes
+# ---------------------------
+# Prompt
+# ---------------------------
 NOTES_PROMPT = """
 You are a helpful AI study assistant named CramIt.
 
@@ -20,15 +27,28 @@ TEXT:
 📌 Study Notes:
 """
 
+prompt = PromptTemplate(
+    input_variables=["chunk"],
+    template=NOTES_PROMPT,
+)
 
-prompt = PromptTemplate(input_variables=["chunk"], template=NOTES_PROMPT)
+# ---------------------------
+# Runnable Chain (LangChain 1.x)
+# ---------------------------
+notes_chain = prompt | llm
 
-# Chain to generate notes from one chunk
-notes_chain = LLMChain(llm=llm, prompt=prompt)
 
+# ---------------------------
+# Public API
+# ---------------------------
 def generate_notes_from_chunks(chunks):
+    """
+    Generates bullet-point study notes from text chunks.
+    """
     notes = []
+
     for chunk in chunks:
-        response = notes_chain.run(chunk=chunk)
-        notes.append(response.strip())
+        response = notes_chain.invoke({"chunk": chunk})
+        notes.append(response.content.strip())
+
     return notes
